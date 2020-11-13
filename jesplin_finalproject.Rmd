@@ -1,0 +1,49 @@
+---
+title: "Public Thought Final Project"
+author: "Jess Esplin"
+date: "11/12/2020"
+output: pdf_document
+---
+
+```{r}
+## INITIAL DATA PROCESSING
+
+# set working directory
+setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
+
+# load data sets
+lvn <- read.csv("data/LVN_data.csv")
+tweets <- read.csv("data/tweets_data.csv")
+blm3 <- read.csv("data/blm_03.csv")
+blm4 <- read.csv("data/blm_04.csv")
+blm5 <- read.csv("data/blm_05.csv")
+blm6 <- read.csv("data/blm_06.csv")
+
+# merge blm datasets by adding each onto the first as additional rows
+talk_radio <- rbind(blm3, blm4, blm5, blm6)
+
+# export combined data set to csv
+write.csv(talk_radio, file = "data/talk_radio.csv")
+
+# moved blm separate csv files into new folder: "data/talk_radio_separate"
+```
+
+```{r}
+## LOADING DATA GOING FORWARD
+
+# set working directory
+setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
+
+# load data sets
+lvn <- read.csv("data/LVN_data.csv")
+tweets <- read.csv("data/tweets_data.csv")
+talk_radio <- read.csv("data/talk_radio.csv")
+
+# load packages
+
+
+# can I analyze the datasets separately or do I need to put them altogether?? Not sure how that would even work
+
+```
+
+
