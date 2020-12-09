@@ -38,12 +38,343 @@ setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Semi
 lvn <- read.csv("data/LVN_data.csv")
 tweets <- read.csv("data/tweets_data.csv")
 talk_radio <- read.csv("data/talk_radio.csv")
+```
 
-# load packages
+```{r}
+# exploring data sets
+View(tweets)
+# noticed that the tweets start at 0 - probably need to adjust this
+tweets[,"body"]
+
+View(talk_radio)
+talk_radio[,"content"]
+talk_radio[,"context"]
+
+talk_radio[1,"content"]
+talk_radio[1,"context"]
+# so it looks like content is a small part, maybe a sentence, and context is a few seconds before and after?
+
+unique(talk_radio[,"city"])
+#
+
+View(lvn)
+# also starts at 0 - will need to adjust this
+lvn[,"snips"]
+# each snip is part of the conversation in sequence
+lvn[,"conv_ID"]
+unique(lvn[,"conv_ID"])
+# looks like there are 161 conversations
+
+unique(lvn[,"location"])
+# looks like there are some issues with the saved locations?? totals to 64 but many combo locations...
+```
+
+```{r}
+## Twitter data cleanup & preliminary analysis
+
+# clean up X variable: add 1 so it counts all tweets in data set
+tweets$X <- tweets$X+1
+
+# understanding extent of data set
+dim(tweets) #46,880 tweets
+names(tweets)
+head(tweets,10)
+tail(tweets,10)
+str(tweets) # shows structure of each variable
+summary(tweets) # data summary
+
+# look through tweets
+tweets[1:10, "body"]
+tweets[11:20, "body"]
+tweets[21:30, "body"]
+tweets[31:40, "body"]
+tweets[41:50, "body"] # extent of what I've looked through so far
 
 
-# can I analyze the datasets separately or do I need to put them altogether?? Not sure how that would even work
+# try to exclude bots
+# though note that it's hard to tell from tweet text if person is real or not, might need more context for that
+# examples of bots to exclude:
+tweets[14, 2:3] # open letter bot
+tweets[85, 2:3] # open letter bot
+tweets[389, 2:3] # open letter bot
+tweets[14731, 2:3] # resist bot
+tweets[12255, 2:3] # NYPD bot
+tweets[13805, 2:3] # BLM bot
+tweets[4337, 2:3] # NES bot (?)
+
+# whereas these "bots" actually look like real people:
+tweets[8693, 2:3] # Lord_Spam_Bot
+tweets[41757, 2:3] # KimtheTrollBot
+
+# also seems like most users with "troll" in their username are real...
+
+
+# what is this??
+tweets[29, 2:3] # chain retweets - not sure to include or exclude? not sure if this matters...
+
+
+# exclude non-English tweets?
+tweets[7, 2:3] # spanish
+
+
+# also exclude news shares??
+tweets[40,2:3] # looks like it's just resharing a news article and tagging a bunch of politicians/important handles
+tweets[47, 2:3] # shared by "WorldNewsPics" - so maybe need to exclude any handles with "pics" in their username?
+tweets[50, 2:3] # not sure about this one either?
+
+
+# what I'm actually looking for with orgs:
+tweets[22, 2:3] # "leading a peaceful protest" "going around my small town" = local organizing/community action
+tweets[20, 2:3] # "creating backlash for the community" = local/comm action
+tweets[39, 2:3] # maybe this one? refers to protesting in the streets
+
+tweets[49, 2:3] # not sure on this one? "under banner of Black lives Matter"
+
+tweets[31, "body"] # not sure about this one?? references going to a protest and being involved...
 
 ```
 
+```{r}
+## coding scheme?
+
+# org references:
+# "BLM organization"
+# "Black KKK"
+# "terrorist organization"
+# conspiracy theories much?? maybe draw lines there with election fraud; 
+# examples: 
+tweets[23, 2:3] # "Brics also could have double meaning as actual bricks that was used by the black lives matters protestors to break int into stores..."
+tweets[12, 2:3] # Black lives matter ... it is a form of brainwashing used by African-Americans to continue to get their own way in society..."
+
+# i also think there's not much reference to local orgs bc people often tweet to a national/not local audience?
+
+# seeing a lot of fighting over blm vs alm language - maybe mention or incorporate this? I'm not sure it's related enough to orgs to mention with my RQ but could point this out in the data
+# examples:
+tweets[32, 2:3]
+tweets[33, 2:3]
+tweets[34, 2:3]
+tweets[37, 2:3]
+tweets[41, 2:3]
+
+# also description of protests vs riots
+tweets[46, 2:3]
+```
+
+```{r}
+# word cloud of tweets
+
+# install packages
+install.packages("tm")  # for text mining
+install.packages("SnowballC") # for text stemming
+install.packages("wordcloud") # word-cloud generator 
+install.packages("RColorBrewer") # color palettes
+
+# load packages
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+# using text file with all tweets (as of this first run)
+text <- readLines("data/tweet-text-file.txt")
+
+#load data as a corpus
+tweetstext <- Corpus(VectorSource(text))
+
+# inspect contents of new doc
+inspect(tweetstext)
+# that took forever, don't do that
+
+# skipping a bunch of steps here: text transformation, text cleaning
+# info on http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+
+# building term-document matrix
+dtm <- TermDocumentMatrix(tweetstext) # looks like it's too big...
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+# trying again with small amount?
+# https://cran.r-project.org/web/packages/corpus/vignettes/corpus.html
+tweetstext[["1:10"]][["content"]]
+tweetstext <- subset(tweetstext[["1:10"]][["content"]])
+dtm <- TermDocumentMatrix(tweetstext[["1:10"]][["content"]])
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+# k none of this worked so didn't get to word cloud part. signing off.
+
+# generating word cloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+```
+
+```{r}
+# 2nd try for word cloud
+
+# word cloud of tweets
+
+# load packages
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+# using text file with all tweets (as of this first run)
+text <- readLines("data/tweet-text-file.txt")
+
+# limit to first 50 tweets for now
+text <- text[1:50,]
+# couldn't get this to work, just redid text file
+# (deleted all else besides tweet text, saved as text delimited file)
+
+# using text file with first 50 tweets
+text <- readLines("data/tweet-text-file-limited.txt")
+
+#load data as a corpus
+tweetstext <- Corpus(VectorSource(text))
+
+# inspect contents of new doc
+inspect(tweetstext)
+
+# skipping a bunch of steps here: text transformation, text cleaning
+# info on http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+
+# building term-document matrix
+dtm <- TermDocumentMatrix(tweetstext)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+# yay this worked
+
+# generating word cloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+# works but have weird issue with not enough space in window
+
+# this may fix it
+tweetwc <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+              max.words=200, random.order=FALSE, rot.per=0.35, 
+              colors=brewer.pal(8, "Dark2"))
+
+print(tweetwc)
+```
+
+```{r}
+# word cloud attempt 3 with larger data set
+
+# load packages
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+# using text file with all tweets (as of this first run)
+text <- readLines("data/1000-tweets.txt")
+# getting errors in unrecognized symbols... not sure what to do about this??
+# I think it dropped 2 entire tweets?
+
+#load data as a corpus
+tweetstext <- Corpus(VectorSource(text))
+
+# inspect contents of new doc
+inspect(tweetstext)
+
+
+# following code/instructions on data cleaning from http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
+
+# Convert the text to lower case
+tweetstext <- tm_map(tweetstext, content_transformer(tolower))
+
+# Remove numbers
+tweetstext <- tm_map(tweetstext, removeNumbers)
+
+# Remove english common stopwords
+tweetstext <- tm_map(tweetstext, removeWords, stopwords("english"))
+
+# Remove your own stop word
+# specify your stopwords as a character vector
+tweetstext <- tm_map(tweetstext, removeWords, c("like", "amp", "blacklivesmatter")) 
+
+# Remove punctuations
+tweetstext <- tm_map(tweetstext, removePunctuation)
+
+# Eliminate extra white spaces
+tweetstext <- tm_map(tweetstext, stripWhitespace)
+
+# Text stemming
+# tweetstext <- tm_map(tweetstext, stemDocument)
+# this didn't really work bc there are too many symbols that are messing with it and i'm not sure how to exclude them
+
+
+# building term-document matrix
+dtm <- TermDocumentMatrix(tweetstext)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+# look at most frequent words
+head(d, 10)
+
+# this may fix it
+set.seed(1234)
+tweetwc <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+                     max.words=200, random.order=FALSE, rot.per=0.35, 
+                     colors=brewer.pal(5, "Spectral"))
+
+print(tweetwc)
+
+```
+
+```{r}
+# plot word frequencies
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+```
+
+```{r}
+# attempt word cloud 4 excluding black lives matter or blm words
+
+# exclude movement names
+tweetstext2 <- tm_map(tweetstext, removeWords, c("black", "lives", "matter", "blm", "blacklivesmatter")) 
+
+# building term-document matrix
+dtm <- TermDocumentMatrix(tweetstext2)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+# look at most frequent words
+head(d, 10)
+
+# create word cloud
+set.seed(1234)
+tweetwc2 <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+                     max.words=200, random.order=FALSE, rot.per=0.35, 
+                     colors=brewer.pal(5, "Dark2"))
+
+print(tweetwc2)
+```
+
+```{r}
+# diff kind of wordcloud?
+library("wordcloud2")
+wordcloud2(data=tweetstext, size = 0.7, shape = 'pentagon')
+# won't work here bc I already made it a corpus...
+```
+
+```{r}
+# tried another method to resize it
+png("wordcloud_packages.png", width=12,height=8, units='in', res=300)
+# don't think this worked...
+```
 
