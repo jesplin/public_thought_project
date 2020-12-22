@@ -9,21 +9,23 @@ output: pdf_document
 ## INITIAL DATA PROCESSING
 
 # set working directory
-setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
+library(here)
+here()
+# setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
 
 # load data sets
 lvn <- read.csv("data/LVN_data.csv")
 tweets <- read.csv("data/tweets_data.csv")
-blm3 <- read.csv("data/blm_03.csv")
-blm4 <- read.csv("data/blm_04.csv")
-blm5 <- read.csv("data/blm_05.csv")
-blm6 <- read.csv("data/blm_06.csv")
+blm3 <- read.csv("data/talk_radio_separate/blm_03.csv")
+blm4 <- read.csv("data/talk_radio_separate/blm_04.csv")
+blm5 <- read.csv("data/talk_radio_separate/blm_05.csv")
+blm6 <- read.csv("data/talk_radio_separate/blm_06.csv")
 
 # merge blm datasets by adding each onto the first as additional rows
 talk_radio <- rbind(blm3, blm4, blm5, blm6)
 
 # export combined data set to csv
-write.csv(talk_radio, file = "data/talk_radio.csv")
+# write.csv(talk_radio, file = "data/talk_radio.csv")
 
 # moved blm separate csv files into new folder: "data/talk_radio_separate"
 ```
@@ -32,7 +34,7 @@ write.csv(talk_radio, file = "data/talk_radio.csv")
 ## LOADING DATA GOING FORWARD
 
 # set working directory
-setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
+# setwd("C:/Users/jesse/OneDrive - UW-Madison/2020 Fall Semester/904 AP Field Seminar - Public Opinion/Final Project/ps904-project/public_thought_project")
 
 # load data sets
 lvn <- read.csv("data/LVN_data.csv")
@@ -67,6 +69,8 @@ unique(lvn[,"conv_ID"])
 
 unique(lvn[,"location"])
 # looks like there are some issues with the saved locations?? totals to 64 but many combo locations...
+
+# ms: yes there does appear to be an issue with the location...weird
 ```
 
 ```{r}
@@ -174,207 +178,51 @@ library("tm")
 library("SnowballC")
 library("wordcloud")
 library("RColorBrewer")
+library("tidyverse")
 
 # using text file with all tweets (as of this first run)
 text <- readLines("data/tweet-text-file.txt")
+# put the text file into a dataframe so it's easier to work with
+tweets <- as.data.frame(text)
+# omg these are a lot of tweets. let's randomly sample 1,000:
+tweets <- tweets[sample(nrow(tweets), 1000), ]
+tweets <- as.data.frame(tweets)
+names(tweets)
+#Create a vector containing only the text
+tweetstext <- tweets$tweets
+tweetstext <- as.data.frame(tweetstext)
+names(tweetstext)
+# remove weird characters
+tweetstext$text <- gsub(" +"," ",gsub("^ +","",gsub("[^a-zA-Z0-9 ]","", tweetstext$tweetstext)))
+# Create a corpus  
+corpus <- Corpus(VectorSource(as.vector(tweetstext$text)))
 
-#load data as a corpus
-tweetstext <- Corpus(VectorSource(text))
+# clean text data via corpus
+# ms: there's an error that says "transformation drops documents"--it's just a warning...if you're curious as to what's going on here, it's a check in the underlying code...
+summary(corpus)
+# remove punctuation
+corpus <- tm_map(corpus, content_transformer(removePunctuation))
+# to lower
+corpus <- tm_map(corpus, content_transformer(tolower))
+# remove stopwords
+corpus <- tm_map(corpus, content_transformer(removeWords), 
+                 stopwords("english"))
+# stemming
+corpus <- tm_map(corpus, stemDocument)
+# remove whitespace
+corpus <- tm_map(corpus, stripWhitespace) 
+# remove numbers
+corpus <- tm_map(corpus, content_transformer(removeNumbers))
+# remove some common words
+corpus <- tm_map(corpus, removeWords, c("black", "lives", "matter", "blm", "blacklivesmatter", "like", "amp")) 
 
-# inspect contents of new doc
-inspect(tweetstext)
-# that took forever, don't do that
-
-# skipping a bunch of steps here: text transformation, text cleaning
-# info on http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
-
-# building term-document matrix
-dtm <- TermDocumentMatrix(tweetstext) # looks like it's too big...
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-head(d, 10)
-
-# trying again with small amount?
-# https://cran.r-project.org/web/packages/corpus/vignettes/corpus.html
-tweetstext[["1:10"]][["content"]]
-tweetstext <- subset(tweetstext[["1:10"]][["content"]])
-dtm <- TermDocumentMatrix(tweetstext[["1:10"]][["content"]])
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-head(d, 10)
-# k none of this worked so didn't get to word cloud part. signing off.
-
-# generating word cloud
-set.seed(1234)
-wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-          max.words=200, random.order=FALSE, rot.per=0.35, 
-          colors=brewer.pal(8, "Dark2"))
-
-```
-
-```{r}
-# 2nd try for word cloud
-
-# word cloud of tweets
-
-# load packages
-library("tm")
-library("SnowballC")
-library("wordcloud")
-library("RColorBrewer")
-
-# using text file with all tweets (as of this first run)
-text <- readLines("data/tweet-text-file.txt")
-
-# limit to first 50 tweets for now
-text <- text[1:50,]
-# couldn't get this to work, just redid text file
-# (deleted all else besides tweet text, saved as text delimited file)
-
-# using text file with first 50 tweets
-text <- readLines("data/tweet-text-file-limited.txt")
-
-#load data as a corpus
-tweetstext <- Corpus(VectorSource(text))
-
-# inspect contents of new doc
-inspect(tweetstext)
-
-# skipping a bunch of steps here: text transformation, text cleaning
-# info on http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
-
-# building term-document matrix
-dtm <- TermDocumentMatrix(tweetstext)
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-head(d, 10)
-# yay this worked
-
-# generating word cloud
-set.seed(1234)
-wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-          max.words=200, random.order=FALSE, rot.per=0.35, 
-          colors=brewer.pal(8, "Dark2"))
-# works but have weird issue with not enough space in window
-
-# this may fix it
-tweetwc <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-              max.words=200, random.order=FALSE, rot.per=0.35, 
-              colors=brewer.pal(8, "Dark2"))
-
-print(tweetwc)
-```
-
-```{r}
-# word cloud attempt 3 with larger data set
-
-# load packages
-library("tm")
-library("SnowballC")
-library("wordcloud")
-library("RColorBrewer")
-
-# using text file with all tweets (as of this first run)
-text <- readLines("data/1000-tweets.txt")
-# getting errors in unrecognized symbols... not sure what to do about this??
-# I think it dropped 2 entire tweets?
-
-#load data as a corpus
-tweetstext <- Corpus(VectorSource(text))
-
-# inspect contents of new doc
-inspect(tweetstext)
-
-
-# following code/instructions on data cleaning from http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
-
-# Convert the text to lower case
-tweetstext <- tm_map(tweetstext, content_transformer(tolower))
-
-# Remove numbers
-tweetstext <- tm_map(tweetstext, removeNumbers)
-
-# Remove english common stopwords
-tweetstext <- tm_map(tweetstext, removeWords, stopwords("english"))
-
-# Remove your own stop word
-# specify your stopwords as a character vector
-tweetstext <- tm_map(tweetstext, removeWords, c("like", "amp", "blacklivesmatter")) 
-
-# Remove punctuations
-tweetstext <- tm_map(tweetstext, removePunctuation)
-
-# Eliminate extra white spaces
-tweetstext <- tm_map(tweetstext, stripWhitespace)
-
-# Text stemming
-# tweetstext <- tm_map(tweetstext, stemDocument)
-# this didn't really work bc there are too many symbols that are messing with it and i'm not sure how to exclude them
-
-
-# building term-document matrix
-dtm <- TermDocumentMatrix(tweetstext)
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-
-# look at most frequent words
-head(d, 10)
-
-# this may fix it
-set.seed(1234)
-tweetwc <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-                     max.words=200, random.order=FALSE, rot.per=0.35, 
-                     colors=brewer.pal(5, "Spectral"))
-
-print(tweetwc)
-
-```
-
-```{r}
-# plot word frequencies
-barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
-        col ="lightblue", main ="Most frequent words",
-        ylab = "Word frequencies")
-```
-
-```{r}
-# attempt word cloud 4 excluding black lives matter or blm words
-
-# exclude movement names
-tweetstext2 <- tm_map(tweetstext, removeWords, c("black", "lives", "matter", "blm", "blacklivesmatter")) 
-
-# building term-document matrix
-dtm <- TermDocumentMatrix(tweetstext2)
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-
-# look at most frequent words
-head(d, 10)
+# create dtm
+dtm <- TermDocumentMatrix(corpus) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+df <- data.frame(word = names(words),freq=words)
 
 # create word cloud
-set.seed(1234)
-tweetwc2 <- wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-                     max.words=200, random.order=FALSE, rot.per=0.35, 
-                     colors=brewer.pal(5, "Dark2"))
-
-print(tweetwc2)
+set.seed(1234) # for reproducibility 
+wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
 ```
-
-```{r}
-# diff kind of wordcloud?
-library("wordcloud2")
-wordcloud2(data=tweetstext, size = 0.7, shape = 'pentagon')
-# won't work here bc I already made it a corpus...
-```
-
-```{r}
-# tried another method to resize it
-png("wordcloud_packages.png", width=12,height=8, units='in', res=300)
-# don't think this worked...
-```
-
